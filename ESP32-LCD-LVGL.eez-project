@@ -106,7 +106,17 @@
     "structures": [],
     "enums": []
   },
-  "actions": [],
+  "actions": [
+    {
+      "objID": "74c85a37-d47c-499a-8b3b-8370571b542b",
+      "components": [],
+      "connectionLines": [],
+      "localVariables": [],
+      "userProperties": [],
+      "name": "globalEEZEvent",
+      "implementationType": "native"
+    }
+  ],
   "userPages": [
     {
       "objID": "4b40eba7-b31a-468a-b887-11dfd0b6637f",
@@ -187,7 +197,7 @@
               "objID": "287b8679-8d26-44c4-80d6-998a62501cc1",
               "type": "LVGLButtonWidget",
               "left": 83,
-              "top": 215,
+              "top": 192,
               "width": 75,
               "height": 25,
               "customInputs": [],
@@ -199,7 +209,15 @@
                 "childStyles": []
               },
               "timeline": [],
-              "eventHandlers": [],
+              "eventHandlers": [
+                {
+                  "objID": "a9f3ff5e-910c-4ae7-9a5d-ead8335d247b",
+                  "eventName": "RELEASED",
+                  "handlerType": "action",
+                  "action": "globalEEZEvent",
+                  "userData": 0
+                }
+              ],
               "identifier": "button1",
               "leftUnit": "px",
               "topUnit": "px",

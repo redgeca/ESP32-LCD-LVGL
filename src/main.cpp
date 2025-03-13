@@ -1,10 +1,14 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <TFT_eSPI.h>
+#include <Wire.h>
 #include <lvgl.h>
 #include "WiFiManager.h"
-#include "TouchDrvCSTXXX.hpp"
+//#include "TouchDrvCSTXXX.hpp"
+#include "CST816S.h"
 #include "ui/ui.h"
+#include "ui/actions.h"
+#include "ui/screens.h"
 
 #define SENSOR_SDA 6
 #define SENSOR_SCL 7
@@ -16,10 +20,14 @@ TFT_eSprite sprite = TFT_eSprite(&lcd);
 TFT_eSprite sprite2 = TFT_eSprite(&lcd);
 TFT_eSprite backSprite = TFT_eSprite(&lcd);
 
-//CST816S touch(6, 7, 13, 5);	// sda, scl, rst, irq
+CST816S touch(6, 7, 13, 5);	// sda, scl, rst, irq
 
-TouchDrvCSTXXX touch;
+//TouchDrvCSTXXX touch;
 static lv_disp_draw_buf_t draw_buf;
+
+// EEZ Studio events
+extern lv_event_t eezEvent;
+extern bool eezEventIsAvailable;
 
 void TFTSetBrightness(uint8_t Value) {
   if (Value < 0 || Value > 100) {
@@ -44,25 +52,40 @@ void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color
 
 void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data)
 {
+    uint32_t touchX = 0;
+    uint32_t touchY = 0;
+    uint32_t touchFingers = 0;
 
-    uint8_t touched;
-    uint8_t gesture;
-    int16_t touchX[5], touchY[5];
+    if (touch.available()) {
+        touchX = touch.data.x;
+        touchY = touch.data.y;
 
-    touched = touch.getPoint(touchX, touchY, touch.getSupportTouchPoint());
-
-    if (!touched)
-    {
-        data->state = LV_INDEV_STATE_REL;
+        data->state = LV_INDEV_STATE_PRESSED;
+        data->point.x = touchX;
+        data->point.y = touchY;
+    } else {
+        data->state = LV_INDEV_STATE_RELEASED;
     }
-    else
-    {
-        data->state = LV_INDEV_STATE_PR;
-        Serial.printf("Touched : %d x %d\n", touchX[0], touchY[0]);
-        /*Set the coordinates*/
-        data->point.x = touchX[0];
-        data->point.y = touchY[0];
-    }
+
+
+//    uint8_t touched;
+//    uint8_t gesture;
+//    int16_t touchX[5], touchY[5];
+
+//    touched = touch.getPoint(touchX, touchY, touch.getSupportTouchPoint());
+
+//     if (!touched)
+//     {
+//         data->state = LV_INDEV_STATE_REL;
+//     }
+//     else
+//     {
+//         data->state = LV_INDEV_STATE_PR;
+// //        Serial.printf("Touched : %d x %d\n", touchX[0], touchY[0]);
+//         /*Set the coordinates*/
+//         data->point.x = touchX[0];
+//         data->point.y = touchY[0];
+//     }
 }
 
 void setup() {
@@ -87,16 +110,17 @@ void setup() {
     Serial.println("Done.");
 
     Serial.println("Initializing Touch");
-    touch.setPins(SENSOR_RST, SENSOR_IRQ);
+    touch.begin();
+    // touch.setPins(SENSOR_RST, SENSOR_IRQ);
     
-    bool result = touch.begin(Wire, CST816_SLAVE_ADDRESS, SENSOR_SDA, SENSOR_SCL);
-    if (result == false) {
-        while (1) {
-            Serial.println("Failed to initialize CST series touch, please check the connection...");
-            delay(1000);
-        }
-    }
-    Serial.printf("Touch Model : %s\nDone.\n", touch.getModelName());
+    // bool result = touch.begin(Wire, CST816_SLAVE_ADDRESS, SENSOR_SDA, SENSOR_SCL);
+    // if (result == false) {
+    //     while (1) {
+    //         Serial.println("Failed to initialize CST series touch, please check the connection...");
+    //         delay(1000);
+    //     }
+    // }
+    // Serial.printf("Touch Model : %s\nDone.\n", touch.getModelName());
 
     Serial.println("Initializing LVGL");
     lv_init();
@@ -138,6 +162,18 @@ void setup() {
 void loop() {
     lv_timer_handler(); /* let the GUI do its work */
     ui_tick();
+
+    if (eezEventIsAvailable)
+    {
+        eezEventIsAvailable = false;
+        lv_obj_t *obj = lv_event_get_target(&eezEvent);
+//        Serial.printf("Received event from %u\n", obj);
+        if (obj == objects.button1)
+        {
+            Serial.println("button1 pressed");
+        }
+    }
+
     vTaskDelay(5 / portTICK_PERIOD_MS); 
 }
 

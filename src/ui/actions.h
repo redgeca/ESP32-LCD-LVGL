@@ -7,6 +7,7 @@
 extern "C" {
 #endif
 
+extern void action_global_eez_event(lv_event_t * e);
 
 
 #ifdef __cplusplus

@@ -13,6 +13,16 @@
 objects_t objects;
 lv_obj_t *tick_value_change_obj;
 
+static void event_handler_cb_main_button1(lv_event_t *e) {
+    lv_event_code_t event = lv_event_get_code(e);
+    void *flowState = lv_event_get_user_data(e);
+    
+    if (event == LV_EVENT_RELEASED) {
+        e->user_data = (void *)0;
+        action_global_eez_event(e);
+    }
+}
+
 void create_screen_main() {
     void *flowState = getFlowState(0, 0);
     lv_obj_t *obj = lv_obj_create(0);
@@ -35,9 +45,13 @@ void create_screen_main() {
             lv_obj_set_style_text_color(obj, lv_color_hex(0xffc2c87c), LV_PART_MAIN | LV_STATE_DEFAULT);
         }
         {
+            // button1
             lv_obj_t *obj = lv_btn_create(parent_obj);
-            lv_obj_set_pos(obj, 83, 215);
+            objects.button1 = obj;
+            lv_obj_set_pos(obj, 83, 192);
             lv_obj_set_size(obj, 75, 25);
+            lv_obj_add_event_cb(obj, event_handler_cb_main_button1, LV_EVENT_ALL, flowState);
+            lv_obj_set_style_bg_color(obj, lv_color_hex(0xff1e3a4f), LV_PART_MAIN | LV_STATE_DEFAULT);
             {
                 lv_obj_t *parent_obj = obj;
                 {
@@ -60,7 +74,7 @@ void tick_screen_main() {
 
 
 static const char *screen_names[] = { "Main" };
-static const char *object_names[] = { "main", "obj0" };
+static const char *object_names[] = { "main", "button1", "obj0" };
 
 
 typedef void (*tick_screen_func_t)();
