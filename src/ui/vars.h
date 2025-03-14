@@ -20,6 +20,8 @@ enum FlowGlobalVariables {
 
 // Native global variables
 
+extern int32_t get_var_meter_indicator_value();
+extern void set_var_meter_indicator_value(int32_t value);
 
 
 #ifdef __cplusplus

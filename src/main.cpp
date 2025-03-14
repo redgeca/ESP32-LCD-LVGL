@@ -6,9 +6,12 @@
 #include "WiFiManager.h"
 //#include "TouchDrvCSTXXX.hpp"
 #include "CST816S.h"
+#include <NTPClient.h>
+#include <time.h>
 #include "ui/ui.h"
 #include "ui/actions.h"
 #include "ui/screens.h"
+#include "ui/vars.h"
 
 #define SENSOR_SDA 6
 #define SENSOR_SCL 7
@@ -20,7 +23,7 @@ TFT_eSprite sprite = TFT_eSprite(&lcd);
 TFT_eSprite sprite2 = TFT_eSprite(&lcd);
 TFT_eSprite backSprite = TFT_eSprite(&lcd);
 
-CST816S touch(6, 7, 13, 5);	// sda, scl, rst, irq
+CST816S touch(6, SENSOR_SCL, SENSOR_RST, SENSOR_IRQ);	// sda, scl, rst, irq
 
 //TouchDrvCSTXXX touch;
 static lv_disp_draw_buf_t draw_buf;
@@ -28,6 +31,11 @@ static lv_disp_draw_buf_t draw_buf;
 // EEZ Studio events
 extern lv_event_t eezEvent;
 extern bool eezEventIsAvailable;
+extern lv_obj_t *swipeObj;
+extern lv_dir_t swipeDir;
+
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP);
 
 void TFTSetBrightness(uint8_t Value) {
   if (Value < 0 || Value > 100) {
@@ -91,17 +99,10 @@ void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data)
 void setup() {
     Serial.begin(115200);
 
-    /**
-     Serial.println("Initializing WIFI");
-    WiFiManager wifiManager;
-    bool connected = wifiManager.autoConnect("ESP32-S3-LCD", "12345678");
-    if (connected) {
-        Serial.println("Connected to WIFI");
-    } else {
-        Serial.println("Failed to connect to WIFI");
-    }
-    Serial.println("Done.");
-    */
+    pinMode(15, OUTPUT);
+    pinMode(16, OUTPUT);
+    digitalWrite(15, HIGH);
+    digitalWrite(16, HIGH);
 
     Serial.println("Initializing LCD");
     lcd.begin();
@@ -121,6 +122,29 @@ void setup() {
     //     }
     // }
     // Serial.printf("Touch Model : %s\nDone.\n", touch.getModelName());
+
+    Serial.println("Initializing WIFI");
+    WiFiManager wifiManager;
+
+//    wifiManager.resetSettings();
+    lcd.fillScreen(TFT_BLACK);
+    lcd.setCursor(25, 103, 2);
+    // Set the font colour to be white with a black background, set text size multiplier to 1
+    lcd.setTextColor(TFT_WHITE, TFT_BLACK);  
+    lcd.setTextSize(2);
+    lcd.printf("Setup WIFI first");
+  
+    bool connected = wifiManager.autoConnect("ESP32-S3-LCD", "12345678");
+    if (connected) {
+        Serial.println("Connected to WIFI");
+    } else {
+        Serial.println("Failed to connect to WIFI");
+    }
+    timeClient.begin();
+    setenv("TZ", "EST5EDT,M3.2.0,M11.1.0", 1);
+    tzset();
+    timeClient.update();
+    Serial.println("Done.");
 
     Serial.println("Initializing LVGL");
     lv_init();
@@ -161,17 +185,51 @@ void setup() {
 
 void loop() {
     lv_timer_handler(); /* let the GUI do its work */
+    
+    lv_label_set_text_fmt(objects.time_label, "%s", timeClient.getFormattedTime());
+    uint16_t result = analogReadMilliVolts(1);;
+    const float conversion_factor = 3.3f / (1 << 12) * 3;
+    const uint16_t percent = (result * conversion_factor) / 3.75 * 100;
+    lv_label_set_text_fmt(objects.battery_label, "%0.2f V", (result * conversion_factor));
+
+    lv_ll_t *indicators = &((lv_meter_t *)objects.battery_meter)->indicator_ll;
+    int index = 0;
+    lv_meter_indicator_t *indicator;
+    for (indicator = (lv_meter_indicator_t*) _lv_ll_get_tail(indicators); index > 0 && indicator != NULL; indicator = (lv_meter_indicator_t*) _lv_ll_get_prev(indicators, indicator), index--);
+    lv_meter_set_indicator_value(objects.battery_meter, indicator, percent);
+
     ui_tick();
 
     if (eezEventIsAvailable)
     {
         eezEventIsAvailable = false;
         lv_obj_t *obj = lv_event_get_target(&eezEvent);
-//        Serial.printf("Received event from %u\n", obj);
-        if (obj == objects.button1)
-        {
-            Serial.println("button1 pressed");
+        lv_event_code_t code = lv_event_get_code(&eezEvent);
+        //Serial.printf("Received event %d from %u\n", code, obj);
+        if (code == LV_EVENT_VALUE_CHANGED) {
+            bool checked = lv_obj_has_state(obj, LV_STATE_CHECKED);
+            Serial.printf("Relay%d now turned %s\n", obj==objects.relay1 ? 1 : 2, checked ? "on" : "off");
+            digitalWrite(obj == objects.relay1 ? 15 : 16, checked ? LOW : HIGH);
         }
+    } 
+
+    if (swipeObj != NULL) {
+        Serial.printf("Swiping %s\n", swipeDir == LV_DIR_LEFT ? "left" : "right");
+        if (swipeDir == LV_DIR_RIGHT) {
+            if (swipeObj == objects.relays) {
+                lv_scr_load(objects.main);
+            } else if (swipeObj == objects.battery_page)  {
+                lv_scr_load(objects.relays);
+            }
+        } else if (swipeDir == LV_DIR_LEFT) {
+            if (swipeObj == objects.main) {
+                lv_scr_load(objects.relays);
+            } else if (swipeObj == objects.relays) {
+                lv_scr_load(objects.battery_page);
+            }
+        }
+        swipeObj = NULL;
+        swipeDir = LV_DIR_NONE;
     }
 
     vTaskDelay(5 / portTICK_PERIOD_MS); 
