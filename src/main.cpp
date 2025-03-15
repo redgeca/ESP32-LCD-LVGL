@@ -183,22 +183,27 @@ void setup() {
 
 }
 
+int loopCount = 0;
 void loop() {
     lv_timer_handler(); /* let the GUI do its work */
-    
-    lv_label_set_text_fmt(objects.time_label, "%s", timeClient.getFormattedTime());
-    uint16_t result = analogReadMilliVolts(1);;
-    const float conversion_factor = 3.3f / (1 << 12) * 3;
-    const uint16_t percent = (result * conversion_factor) / 3.75 * 100;
-    lv_label_set_text_fmt(objects.battery_label, "%0.2f V", (result * conversion_factor));
-
-    lv_ll_t *indicators = &((lv_meter_t *)objects.battery_meter)->indicator_ll;
-    int index = 0;
-    lv_meter_indicator_t *indicator;
-    for (indicator = (lv_meter_indicator_t*) _lv_ll_get_tail(indicators); index > 0 && indicator != NULL; indicator = (lv_meter_indicator_t*) _lv_ll_get_prev(indicators, indicator), index--);
-    lv_meter_set_indicator_value(objects.battery_meter, indicator, percent);
-
     ui_tick();
+    
+    if (loopCount >= 100) {  
+        // Update Label
+        lv_label_set_text_fmt(objects.time_label, "%s", timeClient.getFormattedTime());
+        uint16_t result = analogReadMilliVolts(1);;
+        const float conversion_factor = 3.3f / (1 << 12) * 3;
+        const uint16_t percent = (result * conversion_factor) / 3.75 * 100;
+        lv_label_set_text_fmt(objects.battery_label, "%0.2f V", (result * conversion_factor));
+    
+        // Update meter
+        lv_ll_t *indicators = &((lv_meter_t *)objects.battery_meter)->indicator_ll;
+        int index = 0;
+        lv_meter_indicator_t *indicator;
+        for (indicator = (lv_meter_indicator_t*) _lv_ll_get_tail(indicators); index > 0 && indicator != NULL; indicator = (lv_meter_indicator_t*) _lv_ll_get_prev(indicators, indicator), index--);
+        lv_meter_set_indicator_value(objects.battery_meter, indicator, percent);
+        loopCount = 0;
+    }
 
     if (eezEventIsAvailable)
     {
@@ -232,6 +237,7 @@ void loop() {
         swipeDir = LV_DIR_NONE;
     }
 
+    loopCount ++;
     vTaskDelay(5 / portTICK_PERIOD_MS); 
 }
 
