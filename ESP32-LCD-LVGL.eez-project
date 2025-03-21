@@ -676,7 +676,7 @@
                       "objID": "35bbede8-ec3a-49ec-b2ee-78d593b97c5d",
                       "type": "NEEDLE_LINE",
                       "width": 3,
-                      "color": "#9a9672",
+                      "color": "#afafaf",
                       "radiusModifier": -28,
                       "value": "meterIndicatorValue",
                       "valueType": "expression"
